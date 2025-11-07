@@ -1,119 +1,70 @@
-# thesis_0_annual.py — Quant Thesis Project
-# Author: Maria Simões
-# Versão: dados anuais + top 50 Nasdaq-100 (lista fixa)
+# ----------------------------------------------------------
+# Thesis Project – Part 1: Data Preparation
+# Author: Maria C. F. Figueiredo
+# Master’s in Finance – Nova SBE
+# ----------------------------------------------------------
 
 import pandas as pd
 import numpy as np
-import yfinance as yf
-import datetime as dt
-import warnings
 
-# ------------------------------------------------
-# 0. Configuração inicial
-# ------------------------------------------------
-warnings.simplefilter(action='ignore', category=FutureWarning)
+# === FILE PATHS ===
+path_financials = r"C:\Users\maria\OneDrive\Desktop\Tese\financial_data_1.xlsx"
+path_tickers = r"C:\Users\maria\OneDrive\Desktop\Tese\tickers.xlsx"
+output_path = r"C:\Users\maria\OneDrive\Desktop\Tese\fundamentals_cleaned.xlsx"
 
-start = dt.datetime(2015, 1, 1)
-end = dt.datetime(2024, 12, 31)
+# === 1. READ DATA ===
+data = pd.read_excel(path_financials)
+tickers = pd.read_excel(path_tickers)
 
-# ------------------------------------------------
-# 1. Lista fixa — top 50 da NASDAQ-100
-# ------------------------------------------------
-tickers = [
-    'AAPL','MSFT','AMZN','NVDA','GOOG','META','TSLA','PEP','COST','NFLX',
-    'AVGO','ADBE','AMD','CSCO','INTC','TXN','HON','INTU','AMAT','QCOM',
-    'PYPL','AMGN','MU','MDLZ','ADP','SBUX','BKNG','CHTR','LRCX','GILD',
-    'ISRG','REGN','KLAC','PANW','MAR','CSX','MRNA','ABNB','CDNS','FTNT',
-    'SNPS','AEP','KDP','ADSK','VRTX','PDD','NXPI','MELI','CRWD','CTAS'
+# Keep only relevant tickers
+data = data[data['Ticker Symbol'].isin(tickers['Tickers'])]
+
+# === 2. CLEAN DATA ===
+columns_to_drop = [
+    'Global Company Key',
+    'Data Year - Fiscal',
+    'Earnings Per Share (Diluted) - Excluding Extraordinary Items'
 ]
-print(f"Selecionadas {len(tickers)} empresas (lista fixa).")
-print(tickers[:10], "…\n")
+data = data.drop(columns=[c for c in columns_to_drop if c in data.columns])
 
-# ------------------------------------------------
-# 2. Obter preços históricos (para controlo)
-# ------------------------------------------------
-print("📥 A descarregar dados de preços (para controlo)...")
-data = yf.download(tickers, start=start, end=end, group_by='ticker', interval='1d', auto_adjust=True)
-print("✅ Dados de preços carregados com sucesso.\n")
+# Convert and extract year
+data['DATE'] = pd.to_datetime(data['Data Date'])
+data['Year'] = data['DATE'].dt.year
+data = data[data['Year'] <= 2022]
 
-# ------------------------------------------------
-# 3. Obter dados fundamentais anuais
-# ------------------------------------------------
-fundamentals = []
-print("📊 A processar dados fundamentais (anuais)...")
-
-for ticker in tickers:
-    try:
-        stock = yf.Ticker(ticker)
-        income_y = stock.financials.T       # demonstração de resultados anual
-        balance_y = stock.balance_sheet.T   # balanço anual
-
-        # garantir que temos as colunas necessárias
-        if {'Total Revenue', 'Current Assets', 'Current Liabilities'}.issubset(balance_y.columns.union(income_y.columns)):
-            df = pd.DataFrame({
-                'Sales': income_y['Total Revenue'],
-                'CurrentAssets': balance_y['Current Assets'],
-                'CurrentLiabilities': balance_y['Current Liabilities']
-            })
-            df['Ticker'] = ticker
-            fundamentals.append(df)
-    except Exception as e:
-        print(f"⚠️ Falha ao obter {ticker}: {e}")
-
-# Concatenar todas as empresas
-fundamentals = pd.concat(fundamentals)
-fundamentals.index = pd.to_datetime(fundamentals.index)
-fundamentals.sort_index(inplace=True)
-
-# ------------------------------------------------
-# 4. Calcular indicadores anuais
-# ------------------------------------------------
-fundamentals['SalesGrowth'] = fundamentals.groupby('Ticker')['Sales'].pct_change(fill_method=None)
-fundamentals['CurrentRatio'] = fundamentals['CurrentAssets'] / fundamentals['CurrentLiabilities']
-
-# Limpeza básica
-fundamentals = fundamentals.dropna(subset=['SalesGrowth', 'CurrentRatio'])
-fundamentals = fundamentals[(fundamentals['SalesGrowth'] > -1) & (fundamentals['SalesGrowth'] < 5)]
-
-print("\n✅ Indicadores anuais calculados com sucesso!")
-print(fundamentals[['Ticker', 'Sales', 'SalesGrowth', 'CurrentRatio']].head(10))
-
-# ------------------------------------------------
-# 5. Criar rankings anuais
-# ------------------------------------------------
-print("\n🏗️ A construir rankings e portfólios (anuais)...")
-
-# Criar coluna com o ano
-fundamentals['Year'] = fundamentals.index.to_period('Y')
-
-# Função de ranking
-def rank_by_signal(df, signal):
-    df = df.copy()
-    df['Rank_' + signal] = pd.qcut(df[signal], 3, labels=False, duplicates='drop')
-    return df
-
-# Aplicar rankings
-fundamentals = fundamentals.groupby('Year', group_keys=False).apply(rank_by_signal, 'SalesGrowth').reset_index(drop=True)
-fundamentals = fundamentals.groupby('Year', group_keys=False).apply(rank_by_signal, 'CurrentRatio').reset_index(drop=True)
-
-# Ranking combinado
-fundamentals['Rank_Combined'] = (
-    fundamentals['Rank_SalesGrowth'] + fundamentals['Rank_CurrentRatio']
-) / 2
-fundamentals['Rank_Combined'] = pd.qcut(
-    fundamentals['Rank_Combined'], 3, labels=False, duplicates='drop'
+# === 3. CALCULATE FINANCIAL RATIOS ===
+data['Current Ratio'] = (
+    data['Current Assets - Total'] / data['Current Liabilities - Total']
 )
 
-print("✅ Rankings anuais criados com sucesso!\n")
-print(
-    fundamentals[
-        ['Ticker', 'Year', 'Rank_SalesGrowth', 'Rank_CurrentRatio', 'Rank_Combined']
-    ].head(10)
-)
+# Sales Growth Rate (annual)
+data = data.sort_values(by=['Ticker Symbol', 'Year'])
+data['Sales Growth Rate'] = data.groupby('Ticker Symbol')['Sales/Turnover (Net)'].pct_change()
+data.replace([np.inf, -np.inf], np.nan, inplace=True)
+data = data.dropna(subset=['Sales Growth Rate', 'Current Ratio'])
 
-# ------------------------------------------------
-# 6. Guardar dataset
-# ------------------------------------------------
-fundamentals.to_pickle('fundamentals_annual.pkl')
-print("\n💾 Dados anuais guardados em 'fundamentals_annual.pkl'.")
-print("\n✅ Tudo pronto para a próxima fase: construção dos portfólios!")
+# === 4. CREATE RANKINGS AND TERCILES ===
+data = data.sort_values(by=['Year', 'Sales Growth Rate', 'Current Ratio'], ascending=[True, False, False])
+
+data['Rank_Combined'] = data.groupby('Year') \
+    .apply(lambda x: x[['Sales Growth Rate', 'Current Ratio']]
+           .mean(axis=1)
+           .rank(ascending=False)) \
+    .reset_index(level=0, drop=True)
+
+def assign_tercile(series):
+    tercile = pd.qcut(series, 3, labels=[0, 1, 2])
+    return tercile
+
+data['Tercile'] = data.groupby('Year')['Rank_Combined'].transform(assign_tercile)
+data['Tercile'] = data['Tercile'].astype(int)
+
+# Keep only years with valid data
+data = data[(data['Year'] >= 2000) & (data['Year'] <= 2022)]
+
+# === 5. EXPORT CLEANED DATA ===
+data.to_excel(output_path, index=False)
+print(f"✅ Fundamentals cleaned and saved to: {output_path}")
+
+# Preview
+print(data[['Ticker Symbol', 'Year', 'Sales Growth Rate', 'Current Ratio', 'Tercile']].head(10))
