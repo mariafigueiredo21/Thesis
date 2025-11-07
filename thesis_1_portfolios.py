@@ -1,116 +1,131 @@
-# thesis_1_portfolios_annual.py — Quant Thesis Project
-# Parte 7: Construção e análise dos portfólios anuais
-# Author: Maria Simões
+# ----------------------------------------------------------
+# Thesis Project – Part 2: Portfolio Construction & Analysis
+# Author: Maria C. F. Figueiredo
+# Master’s in Finance – Nova SBE
+# ----------------------------------------------------------
 
 import pandas as pd
 import numpy as np
-import yfinance as yf
 import matplotlib.pyplot as plt
-import datetime as dt
-import warnings
+import statsmodels.api as sm
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
+# === FILE PATHS ===
+path_fundamentals = r"C:\Users\maria\OneDrive\Desktop\Tese\fundamentals_cleaned.xlsx"
+path_returns = r"C:\Users\maria\OneDrive\Desktop\Tese\stocks_returns.csv"
+path_factors = r"C:\Users\maria\OneDrive\Desktop\Tese\fffactors_daily.xlsx"
+output_excel = r"C:\Users\maria\OneDrive\Desktop\Tese\portfolio_results.xlsx"
 
-# ------------------------------------------------
-# 1. Carregar os dados fundamentais anuais
-# ------------------------------------------------
-fundamentals = pd.read_pickle('fundamentals_annual.pkl')
+# === 1. READ DATA ===
+fundamentals = pd.read_excel(path_fundamentals)
+returns = pd.read_csv(path_returns)
+factors = pd.read_excel(path_factors)
 
-# Extrair variáveis de referência (tickers, datas)
-tickers = fundamentals['Ticker'].unique().tolist()
-start = dt.datetime(2015, 1, 1)
-end = dt.datetime(2024, 12, 31)
+returns['Date'] = pd.to_datetime(returns['date'])
+returns['Year'] = returns['Date'].dt.year
 
-print("✅ Dados fundamentais carregados para construção dos portfólios.\n")
+# Keep consistent columns
+returns = returns.rename(columns={
+    'TICKER': 'Ticker Symbol',
+    'vwretd': 'Daily Stock Return'
+})
 
-# ------------------------------------------------
-# 2. Obter preços ajustados anuais
-# ------------------------------------------------
-print("📥 A descarregar preços anuais...")
+# === 2. MERGE WITH FUNDAMENTALS ===
+merged = pd.merge(returns, fundamentals, on=['Ticker Symbol', 'Year'], how='inner')
+merged = merged.dropna(subset=['Sales Growth Rate', 'Current Ratio'])
 
-prices = yf.download(tickers, start=start, end=end, interval='1mo', auto_adjust=True)['Close']
-prices = prices.resample('Y').last()  # último preço de cada ano
+# === 3. DEFINE PORTFOLIOS ===
+# Long-Top (tercile = 0)
+long_top = merged[merged['Tercile'] == 0]
+# Long-Bottom (tercile = 2)
+long_bottom = merged[merged['Tercile'] == 2]
 
-# Calcular retornos anuais
-returns = prices.pct_change()
-returns.index = returns.index.to_period('Y')
+# Market Portfolio = all stocks equally weighted
+def calc_portfolio(df):
+    grouped = df.groupby(['Date', 'Ticker Symbol'])['Daily Stock Return'].mean().unstack()
+    grouped = grouped.fillna(0)
+    grouped['Portfolio Return'] = grouped.mean(axis=1)
+    return grouped['Portfolio Return']
 
-print("✅ Retornos anuais calculados com sucesso.\n")
+long_top_returns = calc_portfolio(long_top)
+long_bottom_returns = calc_portfolio(long_bottom)
+market_returns = calc_portfolio(merged)
 
-# ------------------------------------------------
-# 3. Combinar rankings e retornos
-# ------------------------------------------------
-# Juntar o ranking do ano com o retorno do ano seguinte
-fundamentals = fundamentals.copy()
-fundamentals['YearNext'] = fundamentals['Year'] + 1  # alinhar retorno futuro
+# Long-Short Portfolio
+long_short_returns = long_top_returns - long_bottom_returns
 
-merged = fundamentals.merge(
-    returns.stack().rename('Return').reset_index().rename(columns={'level_1': 'Ticker', 'Date': 'Year'}),
-    left_on=['Ticker', 'YearNext'],
-    right_on=['Ticker', 'Year'],
-    how='inner'
-)
+# === 4. CALCULATE CUMULATIVE RETURNS ===
+portfolios = pd.DataFrame({
+    'Long-Top': long_top_returns,
+    'Long-Bottom': long_bottom_returns,
+    'Long-Short': long_short_returns,
+    'Market': market_returns
+}).dropna()
 
-print("✅ Dados combinados com retornos futuros e rankings anuais.\n")
-print(merged[['Ticker', 'Year_x', 'Rank_Combined', 'Return']].head())
+portfolios_cum = (1 + portfolios).cumprod()
 
-# ------------------------------------------------
-# 4. Criar portfólios anuais
-# ------------------------------------------------
-def portfolio_return(df, rank):
-    """Calcula o retorno médio do portfólio para um dado rank (0,1,2)."""
-    port = df[df['Rank_Combined'] == rank].groupby('Year_x')['Return'].mean()
-    return port
-
-port_top = portfolio_return(merged, 2)
-port_mid = portfolio_return(merged, 1)
-port_bot = portfolio_return(merged, 0)
-
-# Portfólio long-short (Top - Bottom)
-port_ls = port_top - port_bot
-
-# Combinar todos
-portfolios = pd.concat(
-    [port_top, port_mid, port_bot, port_ls], axis=1
-)
-portfolios.columns = ['Top (Rank 2)', 'Middle (Rank 1)', 'Bottom (Rank 0)', 'Long-Short (Top-Bottom)']
-
-print("\n✅ Portfólios construídos com sucesso!")
-print(portfolios.tail())
-
-# ------------------------------------------------
-# 5. Calcular métricas de performance
-# ------------------------------------------------
-def performance_metrics(returns):
-    avg_ret = returns.mean()      # média anual
-    vol = returns.std()
-    sharpe = avg_ret / vol if vol != 0 else np.nan
-    return avg_ret, vol, sharpe
-
-print("\n📊 Métricas de performance (anuais):")
-metrics = pd.DataFrame(
-    [performance_metrics(portfolios[c]) for c in portfolios.columns],
-    index=portfolios.columns,
-    columns=['Return', 'Volatility', 'Sharpe']
-)
-print(metrics.round(3))
-
-# ------------------------------------------------
-# 6. Plotar performance acumulada
-# ------------------------------------------------
-cum_returns = (1 + portfolios).cumprod()
-
-plt.figure(figsize=(12,6))
-plt.plot(cum_returns.index.to_timestamp(), cum_returns['Top (Rank 2)'], label='Top (Rank 2)', linewidth=2)
-plt.plot(cum_returns.index.to_timestamp(), cum_returns['Bottom (Rank 0)'], label='Bottom (Rank 0)', linestyle='--')
-plt.plot(cum_returns.index.to_timestamp(), cum_returns['Long-Short (Top-Bottom)'], label='Long-Short', linewidth=2, color='black')
-
-plt.title("📈 Performance Acumulada dos Portfólios Fundamentais (Anual)", fontsize=13)
-plt.ylabel("Crescimento do Investimento (base = 1.0)")
-plt.xlabel("Ano")
+# === 5. PLOT FIGURE 1 – CUMULATIVE RETURNS ===
+plt.figure(figsize=(10, 6))
+for col in portfolios_cum.columns:
+    plt.plot(portfolios_cum.index, portfolios_cum[col], label=col)
+plt.title("Figure 1: Portfolios' Cumulative Returns")
+plt.xlabel("Date")
+plt.ylabel("Cumulative Return")
 plt.legend()
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
+plt.grid(True)
+plt.savefig(r"C:\Users\maria\OneDrive\Desktop\Tese\Portfolios_Cumulative_Returns.png", dpi=300)
 plt.show()
 
-print("\n✅ Análise de portfólios concluída com sucesso!")
+# === 6. VOLATILITY-TIMING STRATEGY (10%) ===
+target_vol = 0.10
+vol_adj = pd.DataFrame()
+
+for col in portfolios.columns:
+    realized_vol = portfolios[col].std() * np.sqrt(252)
+    leverage = target_vol / realized_vol
+    adjusted_returns = portfolios[col] * leverage
+    vol_adj[col] = (1 + adjusted_returns).cumprod()
+
+plt.figure(figsize=(10, 6))
+for col in vol_adj.columns:
+    plt.plot(vol_adj.index, vol_adj[col], label=col)
+plt.title("Figure 2: Cumulative Returns with Volatility-Timing Strategy")
+plt.xlabel("Date")
+plt.ylabel("Cumulative Return")
+plt.legend()
+plt.grid(True)
+plt.savefig(r"C:\Users\maria\OneDrive\Desktop\Tese\Portfolios_Volatility_Timing.png", dpi=300)
+plt.show()
+
+# === 7. PERFORMANCE METRICS (Table 1) ===
+trading_days = 252
+performance = pd.DataFrame(index=portfolios.columns)
+
+performance['Average Annualized Return'] = ((1 + portfolios.mean()) ** trading_days - 1)
+performance['Volatility'] = portfolios.std() * np.sqrt(252)
+performance['Sharpe Ratio'] = portfolios.mean() / portfolios.std()
+
+performance.to_excel(output_excel, sheet_name='Performance', index=True)
+print("\n📈 Table 1 – Performance Indicators:")
+print(performance.round(4))
+
+# === 8. CAPM ANALYSIS (Table 2) ===
+results_capm = pd.DataFrame(index=['Beta', 'Alpha', 't-Stat(Alpha)', 'Information Ratio'])
+market = portfolios['Market']
+
+for col in ['Long-Top', 'Long-Bottom', 'Long-Short']:
+    y = portfolios[col]
+    X = sm.add_constant(market)
+    model = sm.OLS(y, X).fit()
+    beta = model.params['Market']
+    alpha = model.params['const']
+    t_alpha = model.tvalues['const']
+    ir = alpha / model.resid.std()
+    results_capm[col] = [beta, alpha, t_alpha, ir]
+
+with pd.ExcelWriter(output_excel, mode='a', if_sheet_exists='replace') as writer:
+    results_capm.to_excel(writer, sheet_name='CAPM')
+
+print("\n📊 Table 2 – CAPM Results:")
+print(results_capm.round(4))
+
+print("\n✅ All outputs saved successfully!")
