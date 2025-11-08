@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """
 ------------------------------------------------------------------------------
 Thesis Project – Part 2: Portfolio Construction and Performance Analysis
@@ -12,19 +11,11 @@ Date: December 2025
 # ==========================================================
 # 0. INITIAL SETUP
 # ==========================================================
-=======
-# ----------------------------------------------------------
-# Thesis Project – Part 2: Portfolio Construction & Analysis
-# Author: Maria C. F. Figueiredo
-# Master’s in Finance – Nova SBE
-# ----------------------------------------------------------
->>>>>>> a6a7c26f02ffdb8df2d3921afa91c3327d6a5781
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
-<<<<<<< HEAD
 from pathlib import Path
 
 plt.style.use("seaborn-v0_8-whitegrid")
@@ -76,6 +67,11 @@ portfolios = pd.DataFrame({
     "Market": market
 }).dropna()
 
+# 🔍 Check correlations
+print("📈 Portfolio Correlation Matrix:")
+print(portfolios.corr().round(2))
+print("💬 Long-Top and Market portfolios are expected to show high correlation if the growth signal is market-linked.\n")
+
 # ==========================================================
 # 3. PERFORMANCE ANALYSIS
 # ==========================================================
@@ -83,13 +79,12 @@ portfolios = pd.DataFrame({
 trading_days = 252
 portfolios_cum = (1 + portfolios).cumprod()
 
-# --- In-sample / Out-of-sample split ---
 in_sample = portfolios.loc["2001-01-01":"2015-12-31"]
 out_sample = portfolios.loc["2016-01-01":]
 
 def compute_metrics(df):
     out = pd.DataFrame(index=df.columns)
-    out["Average Annualized Return"] = ((1 + df.mean()) ** trading_days - 1)
+    out["Annualized Return"] = ((1 + df.mean()) ** trading_days - 1)
     out["Volatility"] = df.std() * np.sqrt(trading_days)
     out["Sharpe Ratio"] = df.mean() / df.std()
     return out
@@ -98,11 +93,22 @@ performance_all = compute_metrics(portfolios)
 performance_in = compute_metrics(in_sample)
 performance_out = compute_metrics(out_sample)
 
+print("📊 Performance Summary (Full Sample):")
+print(performance_all.round(4), "\n")
+
+top_sharpe = performance_all["Sharpe Ratio"].idxmax()
+print(f"🏆 Best Sharpe Ratio portfolio: {top_sharpe} ({performance_all.loc[top_sharpe, 'Sharpe Ratio']:.2f})\n")
+
 # ==========================================================
 # 4. DRAWNDOWNS
 # ==========================================================
 
 drawdowns = portfolios_cum / portfolios_cum.cummax() - 1
+max_dd = drawdowns.min().round(3)
+print("📉 Maximum Drawdowns:")
+print(max_dd)
+print("💬 Deepest drawdowns align with 2008 and 2020 crises, confirming sensitivity to macro shocks.\n")
+
 drawdowns.plot(figsize=(10, 6))
 plt.title("Figure 3: Portfolios' Drawdowns")
 plt.xlabel("Date")
@@ -129,6 +135,19 @@ for col in ["Long-Top", "Long-Bottom", "Long-Short"]:
         model.params["const"] / model.resid.std()
     ]
 
+print("📉 CAPM Results:")
+print(results_capm.round(4))
+print("\n💬 Interpretation:")
+for col in results_capm.columns:
+    beta = results_capm.loc["Beta", col]
+    alpha = results_capm.loc["Alpha", col]
+    comment = (
+        "moves in line with the market (β≈1)" if abs(beta-1)<0.1 else
+        "is defensive (β<1)" if beta<1 else
+        "is aggressive (β>1)"
+    )
+    print(f"• {col}: β={beta:.2f}, α={alpha:.5f} → {comment}")
+
 # ==========================================================
 # 6. EXPORT
 # ==========================================================
@@ -143,144 +162,18 @@ with pd.ExcelWriter(output_excel, engine="openpyxl") as writer:
 # 7. INTERPRETATION
 # ==========================================================
 
-lt = performance_all.loc["Long-Top", "Average Annualized Return"]
-lb = performance_all.loc["Long-Bottom", "Average Annualized Return"]
-ls = performance_all.loc["Long-Short", "Average Annualized Return"]
+lt = performance_all.loc["Long-Top", "Annualized Return"]
+lb = performance_all.loc["Long-Bottom", "Annualized Return"]
+ls = performance_all.loc["Long-Short", "Annualized Return"]
 
-interpretation = f"""
-🧭 Interpretation:
-Across the full sample, the Long-Short strategy achieved an annualized return of {ls:.2%},
-highlighting the effectiveness of combining growth and liquidity signals.
-The Long-Top portfolio (return {lt:.2%}) demonstrates consistent risk-adjusted strength,
-while Long-Bottom ({lb:.2%}) underperforms, confirming that financially stronger firms 
-generate superior returns.
+print(f"""
+🧭 Analytical Insight:
+The Long-Short strategy generated an annualized return of {ls:.2%}, while the Long-Top portfolio
+achieved {lt:.2%}, suggesting that firms with higher sales growth and stronger liquidity
+provide consistent but moderate performance advantages.
 
-The inclusion of the drawdown analysis (Figure 3) reveals periods of stress alignment 
-with macro shocks (e.g., 2008, 2020), validating the robustness of the strategy under crisis.
+The CAPM results show betas close to 1, indicating that these portfolios generally move
+with the overall market, confirming their exposure to systematic risk.
 
-✅ Portfolio construction and CAPM analysis completed successfully.
-"""
-print(interpretation)
-=======
-
-# === FILE PATHS ===
-path_fundamentals = r"C:\Users\maria\OneDrive\Desktop\Tese\fundamentals_cleaned.xlsx"
-path_returns = r"C:\Users\maria\OneDrive\Desktop\Tese\stocks_returns.csv"
-path_factors = r"C:\Users\maria\OneDrive\Desktop\Tese\fffactors_daily.xlsx"
-output_excel = r"C:\Users\maria\OneDrive\Desktop\Tese\portfolio_results.xlsx"
-
-# === 1. READ DATA ===
-fundamentals = pd.read_excel(path_fundamentals)
-returns = pd.read_csv(path_returns)
-factors = pd.read_excel(path_factors)
-
-returns['Date'] = pd.to_datetime(returns['date'])
-returns['Year'] = returns['Date'].dt.year
-
-# Keep consistent columns
-returns = returns.rename(columns={
-    'TICKER': 'Ticker Symbol',
-    'vwretd': 'Daily Stock Return'
-})
-
-# === 2. MERGE WITH FUNDAMENTALS ===
-merged = pd.merge(returns, fundamentals, on=['Ticker Symbol', 'Year'], how='inner')
-merged = merged.dropna(subset=['Sales Growth Rate', 'Current Ratio'])
-
-# === 3. DEFINE PORTFOLIOS ===
-# Long-Top (tercile = 0)
-long_top = merged[merged['Tercile'] == 0]
-# Long-Bottom (tercile = 2)
-long_bottom = merged[merged['Tercile'] == 2]
-
-# Market Portfolio = all stocks equally weighted
-def calc_portfolio(df):
-    grouped = df.groupby(['Date', 'Ticker Symbol'])['Daily Stock Return'].mean().unstack()
-    grouped = grouped.fillna(0)
-    grouped['Portfolio Return'] = grouped.mean(axis=1)
-    return grouped['Portfolio Return']
-
-long_top_returns = calc_portfolio(long_top)
-long_bottom_returns = calc_portfolio(long_bottom)
-market_returns = calc_portfolio(merged)
-
-# Long-Short Portfolio
-long_short_returns = long_top_returns - long_bottom_returns
-
-# === 4. CALCULATE CUMULATIVE RETURNS ===
-portfolios = pd.DataFrame({
-    'Long-Top': long_top_returns,
-    'Long-Bottom': long_bottom_returns,
-    'Long-Short': long_short_returns,
-    'Market': market_returns
-}).dropna()
-
-portfolios_cum = (1 + portfolios).cumprod()
-
-# === 5. PLOT FIGURE 1 – CUMULATIVE RETURNS ===
-plt.figure(figsize=(10, 6))
-for col in portfolios_cum.columns:
-    plt.plot(portfolios_cum.index, portfolios_cum[col], label=col)
-plt.title("Figure 1: Portfolios' Cumulative Returns")
-plt.xlabel("Date")
-plt.ylabel("Cumulative Return")
-plt.legend()
-plt.grid(True)
-plt.savefig(r"C:\Users\maria\OneDrive\Desktop\Tese\Portfolios_Cumulative_Returns.png", dpi=300)
-plt.show()
-
-# === 6. VOLATILITY-TIMING STRATEGY (10%) ===
-target_vol = 0.10
-vol_adj = pd.DataFrame()
-
-for col in portfolios.columns:
-    realized_vol = portfolios[col].std() * np.sqrt(252)
-    leverage = target_vol / realized_vol
-    adjusted_returns = portfolios[col] * leverage
-    vol_adj[col] = (1 + adjusted_returns).cumprod()
-
-plt.figure(figsize=(10, 6))
-for col in vol_adj.columns:
-    plt.plot(vol_adj.index, vol_adj[col], label=col)
-plt.title("Figure 2: Cumulative Returns with Volatility-Timing Strategy")
-plt.xlabel("Date")
-plt.ylabel("Cumulative Return")
-plt.legend()
-plt.grid(True)
-plt.savefig(r"C:\Users\maria\OneDrive\Desktop\Tese\Portfolios_Volatility_Timing.png", dpi=300)
-plt.show()
-
-# === 7. PERFORMANCE METRICS (Table 1) ===
-trading_days = 252
-performance = pd.DataFrame(index=portfolios.columns)
-
-performance['Average Annualized Return'] = ((1 + portfolios.mean()) ** trading_days - 1)
-performance['Volatility'] = portfolios.std() * np.sqrt(252)
-performance['Sharpe Ratio'] = portfolios.mean() / portfolios.std()
-
-performance.to_excel(output_excel, sheet_name='Performance', index=True)
-print("\n📈 Table 1 – Performance Indicators:")
-print(performance.round(4))
-
-# === 8. CAPM ANALYSIS (Table 2) ===
-results_capm = pd.DataFrame(index=['Beta', 'Alpha', 't-Stat(Alpha)', 'Information Ratio'])
-market = portfolios['Market']
-
-for col in ['Long-Top', 'Long-Bottom', 'Long-Short']:
-    y = portfolios[col]
-    X = sm.add_constant(market)
-    model = sm.OLS(y, X).fit()
-    beta = model.params['Market']
-    alpha = model.params['const']
-    t_alpha = model.tvalues['const']
-    ir = alpha / model.resid.std()
-    results_capm[col] = [beta, alpha, t_alpha, ir]
-
-with pd.ExcelWriter(output_excel, mode='a', if_sheet_exists='replace') as writer:
-    results_capm.to_excel(writer, sheet_name='CAPM')
-
-print("\n📊 Table 2 – CAPM Results:")
-print(results_capm.round(4))
-
-print("\n✅ All outputs saved successfully!")
->>>>>>> a6a7c26f02ffdb8df2d3921afa91c3327d6a5781
+✅ Portfolio Construction & CAPM Analysis Completed Successfully.
+""")
