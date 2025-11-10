@@ -1,9 +1,13 @@
 # 🎓 Thesis Project – Empirical Rebuild
 
 Sales Growth × Liquidity Framework
+
 Master’s Thesis in Finance – Nova School of Business and Economics
+
 Author: Maria Cevadinha Simões Figueiredo
+
 Supervisor: Prof. Nicholas Hirschey
+
 Date: November 2025
 ---
 
