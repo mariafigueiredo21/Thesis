@@ -1,0 +1,257 @@
+"""
+------------------------------------------------------------------------------
+Thesis Project – Part 1: Data Preparation and Financial Signal Construction
+Author: Maria Figueiredo
+Master’s in Finance – Nova School of Business and Economics
+Supervisor: Prof. Nicholas Hirschey
+Date: November 2025
+------------------------------------------------------------------------------
+
+🎓 Thesis Project — Output Preview & Interpretation Tool
+
+Automatically scans all generated outputs (datasets, reports,
+and figures) and provides interpretative summaries for each.
+------------------------------------------------------------
+"""
+
+###################################### 0. INITIAL SETUP ######################################
+
+import pandas as pd
+from pathlib import Path
+from PIL import Image
+from datetime import datetime
+import os
+
+OUTPUT_PATH = Path(__file__).parent
+
+###################################### 1. INTERPRETATIONS PREPARATION ######################################
+
+# INTERPRETATIVE NOTES — IMAGES
+IMAGE_ANALYSIS = {
+    "Figure0_Distribution_Signals.png": """
+This figure illustrates the distribution of financial signals—specifically the relationship between the Sales Growth Rate (x-axis)
+and the Current Ratio (y-axis)—across three terciles of firms, represented by different colors.
+
+The majority of observations cluster near low values of both variables, indicating that most firms exhibit modest growth and moderate
+liquidity levels. A few extreme outliers with abnormally high current ratios (above 1000) suggest the presence of firms with exceptionally
+high liquidity or data distortions.
+
+Overall, the figure reveals that liquidity ratios vary more widely than growth rates, and that firms with higher growth do not necessarily
+exhibit stronger liquidity positions, pointing to a weak or non-linear relationship between operational expansion and short-term stability.
+""",
+
+    "Figure1_Cumulative_Returns.png": """
+This figure displays the cumulative returns of the Long-Top, Long-Bottom, Long-Short, and Market portfolios (2000–2023). The Market portfolio
+(red line) outperforms all others, particularly after 2010, reflecting the post-crisis expansion and technology-driven bull markets.
+
+The Long-Top and Long-Bottom portfolios move closely with the market, whereas the Long-Short portfolio (green) remains nearly flat, suggesting
+that return differentials between top and bottom terciles are weak and largely offset. Overall, the figure highlights the dominance of market
+exposure and the limited profitability of market-neutral strategies.
+""",
+
+    "Figure2_Volatility_Timing.png": """
+This figure presents the cumulative returns of the Long-Top, Long-Bottom, Long-Short, and Market portfolios under a volatility-timing strategy
+(2000–2023). The approach dynamically adjusts portfolio exposure to stabilize risk and enhance performance consistency.
+
+The Market portfolio exhibits the strongest cumulative performance, particularly during stable, low-volatility periods. The Long-Short portfolio
+remains flat, confirming that relative performance between top and bottom terciles fails to generate consistent alpha. Volatility-timing enhances
+risk control but does not alter the hierarchy of portfolio returns.
+""",
+
+    "Figure3_Drawdowns.png": """
+This figure shows the drawdown dynamics of the Long-Top, Long-Bottom, Long-Short, and Market portfolios between 2000 and 2023. The Market portfolio
+(red) experiences the deepest drawdowns during major crises (2008–2009, 2020, 2022–2023). The Long-Short portfolio (green) remains stable, underscoring
+its defensive and market-neutral nature. The figure highlights the trade-off between higher long-term returns and drawdown severity across strategies.
+""",
+
+    "Figure_Conditional_Drawdowns.png": """
+This figure shows the evolution of conditional drawdowns (cumulative percentage losses) for the Long-Top, Long-Bottom, Long-Short, and Market portfolios.
+The Market (red) suffers the largest losses during crises (2008, 2020, 2022), while the Long-Short portfolio (green) remains notably stable and resilient.
+These patterns confirm the hedging properties of the Long-Short strategy during systemic stress periods.
+""",
+
+    "Figure_Factor_Correlation_Heatmap.png": """
+This figure illustrates the correlation structure between portfolio returns (Long-Top, Long-Bottom, Long-Short) and Fama–French factors (Market, SMB, HML).
+
+The Market, Long-Top, and Long-Bottom portfolios exhibit near-perfect positive correlations (ρ ≈ 1), while the Long-Short portfolio shows strong negative
+correlations (around −0.9), confirming its hedged profile. SMB and HML correlations are close to zero, indicating weak exposure to size or value factors.
+""",
+
+    "Figure_FF_Comparison.png": """
+This figure compares alphas (daily excess returns) estimated using Fama–French 3- and 5-Factor models. Across all portfolios, alphas are slightly negative
+and nearly identical between the two models, suggesting that profitability and investment factors in FF5 add little explanatory power beyond the FF3 model.
+This reinforces that portfolio performance is largely driven by systematic risk factors.
+""",
+
+    "Figure_FF_Stability.png": """
+This figure compares in-sample (2001–2015) and out-of-sample (2016–2022) alphas from the Fama–French 3-Factor model. Alphas remain negative throughout,
+showing consistent absence of excess returns. The reduction in magnitude post-2016 indicates performance stabilization and model robustness over time.
+""",
+
+    "Figure_Regime_Performance.png": """
+This figure presents the portfolio’s performance across economic regimes (Pre-crisis, Crisis, Recovery, Post-COVID). Performance was worst pre-crisis
+and improved gradually thereafter, reflecting greater resilience as markets normalized. The figure highlights a progressive enhancement of
+risk-adjusted returns and reduced losses in recent periods.
+""",
+
+    "Figure_RollingAlpha.png": """
+This figure shows the rolling alpha (3-year moving window) of the Long-Top, Long-Bottom, and Long-Short portfolios. Between 2011–2017, alpha improved steadily,
+peaking around 2018–2020 before slightly declining post-COVID. The near-identical movements confirm that systematic factors dominate time-varying performance.
+""",
+
+    "Figure_RollingR2.png": """
+This figure shows the rolling R² (3-year moving window) for each portfolio, capturing the time-varying explanatory power of Fama–French factors.
+The Long-Top and Long-Bottom portfolios maintain moderate R² (≈1–2%), while the Long-Short portfolio stays below 1%, confirming its independence
+from common risk factors. The 2018 spikes reflect periods of heightened market synchronization.
+""",
+
+    "Figure_Volatility_Timing.png": """
+This figure illustrates the cumulative returns of volatility-targeted portfolios (Long-Top, Long-Bottom, Long-Short, Market) from 2000–2023,
+assuming a target volatility of 10% (σ = 10%). The Market portfolio (red) delivers the highest cumulative growth, while Long-Top and Long-Bottom
+follow closely, benefiting from smoother risk-adjusted paths. The Long-Short portfolio remains flat, confirming that volatility targeting enhances
+risk control but not alpha generation.
+"""
+}
+
+
+# INTERPRETATIVE NOTES — EXCEL FILES
+EXCEL_INTERPRETATION = {
+    "downside_risk_metrics.xlsx": """
+This dataset contains downside risk metrics (Sharpe, Sortino, Omega, CDaR) for each portfolio.
+It is essential for assessing the efficiency and stability of returns, supporting the conclusion
+that the Long-Short portfolio provides defensive performance with limited profitability.
+""",
+
+    "factor_correlation_matrix.xlsx": """
+This file presents the correlation structure among portfolios and Fama–French risk factors.
+It enables the identification of interdependence between strategies and confirms that
+the Long-Short portfolio behaves inversely to market-oriented exposures.
+""",
+
+    "fama_french_inout.xlsx": """
+This file compares in-sample and out-of-sample estimates from the Fama–French 3-Factor model,
+demonstrating the stability of alpha and beta coefficients over time. It supports the validation
+of model robustness and highlights the temporal consistency of portfolio performance.
+""",
+
+    "fama_french_results.xlsx": """
+This dataset reports the results of Fama–French 3-Factor regressions for all portfolios.
+It provides key evidence that alphas are statistically insignificant, confirming that
+systematic factors explain most of the return variation and that no persistent abnormal
+performance exists.
+""",
+
+    "fama_macbeth_results.xlsx": """
+This file contains the cross-sectional Fama–MacBeth regression results.
+It evaluates the relationship between firm-level betas and expected returns, providing
+insight into the cross-sectional pricing power of liquidity and growth factors.
+""",
+
+    "fundamentals_cleaned.xlsx": """
+This large dataset compiles firm-level financial statements, including sales, assets,
+liabilities, and liquidity indicators. It serves as the foundation for constructing
+the empirical signals (Sales Growth and Current Ratio) used in portfolio formation
+and ranking procedures.
+""",
+
+    "performance_by_regime.xlsx": """
+This file summarizes the performance of portfolios across distinct macroeconomic regimes.
+It enables the assessment of strategy resilience during different market conditions and
+supports the interpretation that performance improves after crisis periods.
+""",
+
+    "portfolio_daily_returns.xlsx": """
+This dataset includes daily portfolio and market returns from 2000–2023.
+It is the primary time-series input for performance, volatility, and regression analyses,
+forming the empirical backbone of the study.
+""",
+
+    "portfolio_results.xlsx": """
+This file summarizes annualized portfolio metrics—returns, volatility, and Sharpe ratios.
+It provides a concise overview of relative performance and risk efficiency across the Long,
+Short, and Market portfolios.
+""",
+
+    "rolling_regression_results.xlsx": """
+This dataset contains rolling regression outputs (alphas) computed over a 3-year window.
+It captures the temporal evolution of performance and allows for dynamic analysis of
+how explanatory power and alpha stability change over time.
+""",
+
+    "summary_stats.xlsx": """
+This summary table provides descriptive statistics (mean, median, standard deviation)
+for key financial ratios such as Sales Growth and Current Ratio. It establishes the
+baseline characteristics of the sample and supports the signal classification process.
+""",
+
+    "volatility_timing_results.xlsx": """
+This file reports returns for volatility-targeted portfolios.
+It underpins the analysis of risk-managed performance and demonstrates how volatility
+targeting affects both stability and cumulative returns.
+"""
+}
+
+# SUMMARIZATION FUNCTIONS
+def summarize_image(file_path):
+    try:
+        img = Image.open(file_path)
+        width, height = img.size
+        size_kb = os.path.getsize(file_path) / 1024
+        mod_time = datetime.fromtimestamp(file_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+
+        print(f"\n{file_path.name}")
+        print(f"Dimensions: {width}x{height}px | Size: {size_kb:.1f} KB | Last modified: {mod_time}")
+        print("------------------------------------------------------------")
+        print("📊 Interpretation:")
+        if file_path.name in IMAGE_ANALYSIS:
+            print(IMAGE_ANALYSIS[file_path.name].strip())
+        else:
+            print("No predefined analysis available for this figure.")
+    except Exception as e:
+        print(f"Error reading image {file_path.name}: {e}")
+
+
+def summarize_tabular(file_path):
+    if "thesis_full_report" in file_path.name.lower():
+        print(f"\nSkipping {file_path.name} (report text file).")
+        return
+
+    print(f"\n{file_path.name}")
+    try:
+        df = pd.read_excel(file_path) if file_path.suffix in [".xlsx", ".xls"] else pd.read_csv(file_path)
+        print(f"Shape: {df.shape[0]} rows × {df.shape[1]} columns")
+        print(f"Columns: {', '.join(df.columns[:6])} ...")
+        print(f"Missing values: {df.isna().sum().sum()}")
+        print("🔍 Preview:")
+        print(df.head(3).to_string(index=False))
+        print("------------------------------------------------------------")
+        print("📊 Interpretation:")
+        if file_path.name in EXCEL_INTERPRETATION:
+            print(EXCEL_INTERPRETATION[file_path.name].strip())
+        else:
+            print("No specific interpretation for this dataset.")
+    except Exception as e:
+        print(f"Error reading {file_path.name}: {e}")
+
+
+# MAIN
+def main():
+    print("------------------------------------------------------------")
+    print("🎓 Thesis Project — Output Preview & Interpretation Tool")
+    print("Directory:", OUTPUT_PATH)
+    print("------------------------------------------------------------")
+
+    for file in sorted(OUTPUT_PATH.iterdir(), key=lambda f: f.name):
+        if not file.is_file():
+            continue
+        if file.suffix.lower() in [".png", ".jpg", ".jpeg"]:
+            summarize_image(file)
+        elif file.suffix.lower() in [".xlsx", ".xls", ".csv", ".txt"]:
+            summarize_tabular(file)
+        print("------------------------------------------------------------")
+
+    print("✅ Full output interpretation complete.")
+
+
+if __name__ == "__main__":
+    main()
