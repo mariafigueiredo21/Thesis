@@ -9,6 +9,7 @@ Author: Maria Cevadinha Simões Figueiredo
 Supervisor: Prof. Nicholas Hirschey
 
 Date: November 2025
+
 ---
 
 ## 📘 Overview
@@ -27,7 +28,7 @@ The thesis builds upon established literature in empirical asset pricing:
 - Frazzini & Pedersen (2014): “Quality Minus Junk” factor as a quality-based benchmark.
 
 The central hypothesis:
-- Firms with higher sales growth and stronger liquidity ratios behave as “quality firms” — stable and efficient, but not systematically mispriced.
+**- Firms with higher sales growth and stronger liquidity ratios behave as “quality firms” — stable and efficient, but not systematically mispriced.**
 
 ## ⚙️ Analytical Structure
 #### 1️⃣ Data Preparation
@@ -44,28 +45,28 @@ The central hypothesis:
   - The objective is to apply volatility scaling (σ = 10%) to assess robustness across regimes.
 #### 5️⃣ Advanced Robustness
   - The focus is Rolling & Cross-Sectional Tests
-  - The objective is to Evaluate temporal and cross-sectional stability (Fama–MacBeth, downside risk).
+  - The objective is to evaluate temporal and cross-sectional stability (Fama–MacBeth, downside risk).
 #### Annex A & B
   - The focus is Regime & Correlation Analysis
-  - The objective is to Examine regime-dependent performance and correlation with canonical factors.
+  - The objective is to examine regime-dependent performance and correlation with canonical factors.
 
 ## 🔍 Key Empirical Insights
 #### 1. Systematic Risk Dominance:
-  - Portfolio alphas are statistically insignificant once Fama–French factors are included — confirming that performance stems from common risk exposures, not anomalies.
+  - Portfolio _alphas_ are statistically insignificant once Fama–French factors are included, confirming that performance stems from common risk exposures, not anomalies.
 #### 2. Quality–Defensive Behaviour:
   - The Long–Short spread behaves as a defensive, counter-cyclical quality factor — stable during crises, flat during expansions.
 #### 3. Volatility-Managed Robustness:
   - Volatility targeting (σ = 10%) enhances return stability without creating alpha, reinforcing market efficiency.
 #### 4. Cross-Sectional Neutrality:
-  - Fama–MacBeth regressions show no persistent premia on growth or liquidity — these variables describe firm quality, not priced risk.
+  - Fama–MacBeth regressions show no persistent premia on growth or liquidity. These variables describe firm quality, not priced risk.
 #### 5. Regime Consistency:
   - Results remain stable across pre-crisis, crisis, recovery, and post-COVID regimes, highlighting structural resilience.
 
 ## 📊 Methodological Highlights
-- Data Source: Compustat Global (2000–2022) and Kenneth French’s Data Library.
-- Estimation Framework: OLS regressions (time-series & cross-sectional), rolling windows, volatility-scaling, and downside risk metrics.
-- Key Tools: pandas, statsmodels, matplotlib, seaborn, scipy.
-- Output: Excel datasets, figures (α, R², drawdowns), and textual analytical summaries.
+- **Data Source:** Compustat Global (2000–2022) and Kenneth French’s Data Library.
+-** Estimation Framework:** OLS regressions (time-series & cross-sectional), rolling windows, volatility-scaling, and downside risk metrics.
+- **Key Tools:** pandas, statsmodels, matplotlib, seaborn, scipy.
+- **Output:** Excel datasets, figures (α, R², drawdowns), and textual analytical summaries.
 
 ## 🧩 Interpretation
 The integrated results demonstrate that the Sales Growth × Liquidity framework is:
@@ -73,11 +74,11 @@ The integrated results demonstrate that the Sales Growth × Liquidity framework 
 - Economically neutral — excess returns vanish under risk-adjusted models;
 - Qualitatively meaningful — captures firm stability rather than mispricing.
 
-“Strong fundamentals explain strong firms — not necessarily excess returns.”
+**_“Strong fundamentals explain strong firms — not necessarily excess returns.”_**
 
 ---
 
 ### ✅ Project Summary
-- Analytical pipeline: 7 Python modules (Parts 1–5 + Annexes A–B)
-- Automated synthesis: via thesis_rebuild.py
-- Core outcome: A fully reproducible, factor-based empirical validation of the quality dimension in asset pricing.
+- **Analytical pipeline:** 7 Python modules (Parts 1–5 + Annexes A–B)
+- **Automated synthesis:** via thesis_rebuild.py
+- **Core outcome:** A fully reproducible, factor-based empirical validation of the quality dimension in asset pricing.
