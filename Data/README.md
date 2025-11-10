@@ -1,108 +1,42 @@
-# 📁 Thesis Project — Data Folder
+# 🗂️ Thesis Project — Part 1: Data Preparation and Financial Signal Construction
 
-This directory contains all **raw, intermediate, and processed datasets** used in the empirical analysis of the quantitative strategy **Sales Growth × Liquidity**.  
-Each file supports a specific stage of the workflow — from firm fundamentals to portfolio construction and risk-adjusted evaluation.
+### 📘 Overview
 
+This directory contains all raw and processed datasets used in the first stage of the thesis:
+Data Preparation and Financial Signal Construction.
+It provides the empirical foundation for building and testing the financial signals — Sales Growth and Liquidity (Current Ratio) — used in portfolio formation and performance evaluation.
+The accompanying Python script preview_data.py automatically scans all files, prints descriptive statistics (shape, columns, missing values), previews the first rows, and provides a concise academic interpretation for each dataset.
 ---
 
-## 🧩 Dataset Descriptions
+### ⚙️ Script's Purpose
+The purpose of this script is to automatically inspect all datasets in this folder and print structured information and academic interpretations for each file.
+This tool was designed to ensure transparency, consistency, and traceability in the data collection and preprocessing phase of the thesis.
 
-### 1️⃣ `fffactors_daily.xlsx`
-**Purpose:** Benchmark risk factors for regression and performance attribution (Fama–French 3/5).  
-**Source:** Kenneth R. French Data Library.  
-**Frequency:** Daily  
-**Shape:** 5,787 rows × 5 columns  
-**Columns:**  
-- `Date` — Trading date (DD-MM-YYYY)  
-- `Mkt-RF` — Market excess return  
-- `SMB` — Small Minus Big size factor  
-- `HML` — High Minus Low value factor  
-- `RF` — Risk-free rate (%)  
-**Missing values:** 0  
+### 📊 Datasets and Interpretations 
+#### - fffactors_daily.xlsx
+  - Contains the daily Fama–French factors (Market–RF, SMB, HML, RF) used as the benchmark model for performance adjustment and regression analysis. It forms the foundation for estimating abnormal returns (alphas) in portfolio tests.
+#### - financial_data_1.xlsx
+  - Comprehensive firm-level dataset from Compustat/CRSP including balance sheet and income statement variables (assets, liabilities, sales, EPS). Serves as the raw input for computing fundamental ratios and signals used in portfolio formation.
+#### - fundamentals_cleaned.xlsx
+  - Cleaned and structured version of the financial data, containing calculated ratios such as Current Ratio and Sales Growth Rate, along with composite signal ranks and tercile classifications.
+  - It represents the core dataset used for empirical analysis and portfolio construction.
+#### - portfolio_results.xlsx
+  - Summarizes annualized performance metrics (return, volatility, Sharpe ratio) for the constructed portfolios. Provides the first quantitative assessment of the risk–return trade-off among the Long–Top, Long–Bottom, and Long–Short strategies.
+#### - stocks_returns.csv
+  - Massive panel of daily stock-level returns with identifiers (PERMNO, ticker, price, return, market return). Forms the empirical backbone for calculating portfolio returns and conducting cross-sectional performance tests.
+#### - tickers.xlsx
+  - List of all tickers (firm identifiers) in the analysis universe, ensuring data consistency across financial, returns, and portfolio datasets. Functions as a linking table between sources.
 
-🧠 *Used in:* multi-factor regression models and alpha estimation.
+### 🧠 Research Context
+The datasets in this folder collectively enable the empirical reconstruction of firm fundamentals and market behavior across the 2000–2023 sample period.
+They serve to:
+- Compute financial signals capturing growth and liquidity characteristics.
+- Build ranking-based portfolios (Long–Top, Long–Bottom, Long–Short).
+- Enable factor-adjusted performance evaluation via Fama–French regressions.
+This structured data foundation ensures methodological transparency and reproducibility of all subsequent analyses in the thesis.
 
----
-
-### 2️⃣ `financial_data_1.xlsx`
-**Purpose:** Raw firm-level financials used to construct sales growth and liquidity ratios.  
-**Source:** Refinitiv/Compustat style extract.  
-**Frequency:** Annual (fiscal year)  
-**Shape:** 261,951 rows × 9 columns  
-**Columns (main):**  
-- `Global Company Key`, `Data Date`, `Data Year - Fiscal`, `Ticker Symbol`, `Company Name`  
-- `Current Assets - Total`, `Current Liabilities - Total`  
-- `Earnings Per Share (Diluted) - Excluding Extraordinary Items`  
-- `Sales/Turnover (Net)`  
-**Missing values:** 296,085  
-
-🧠 *Used in:* computation of financial ratios and sales/liquidity signals.
-
----
-
-### 3️⃣ `fundamentals_cleaned.xlsx`
-**Purpose:** Cleaned dataset after filtering, winsorization, and ratio calculation.  
-**Source:** Output from preprocessing script `thesis_0.py`  
-**Frequency:** Annual  
-**Shape:** 25,625 rows × 12 columns  
-**Columns (key):**  
-- `Data Date`, `Ticker Symbol`, `Company Name`, `DATE`, `Year`  
-- `Current Ratio` — liquidity metric  
-- `Sales Growth Rate` — sales momentum metric  
-- `Rank_Combined` — composite score combining growth & liquidity  
-- `Tercile` — portfolio allocation (0 = Low, 1 = Mid, 2 = High)  
-**Missing values:** 4  
-
-🧠 *Used in:* portfolio construction and signal ranking.
-
----
-
-### 4️⃣ `portfolio_results.xlsx`
-**Purpose:** Summary of performance metrics for the constructed portfolios.  
-**Source:** Output from portfolio evaluation script (`thesis_2.py`).  
-**Frequency:** Aggregate (portfolio-level summary).  
-**Shape:** 4 rows × 4 columns  
-**Columns:**  
-- `Average Annualized Return`  
-- `Volatility`  
-- `Sharpe Ratio`  
-**Missing values:** 0  
-
-🧠 *Used in:* final performance comparison (Long–Top, Long–Bottom, Long–Short).
-
----
-
-### 5️⃣ `stocks_returns.csv`
-**Purpose:** Daily stock-level market data used to compute portfolio returns.  
-**Source:** CRSP-like dataset (Compustat/Refinitiv).  
-**Frequency:** Daily  
-**Shape:** 42,561,675 rows × 6 columns  
-**Columns:**  
-- `PERMNO` — unique stock identifier  
-- `date` — trading date  
-- `TICKER` — stock ticker  
-- `PRC` — closing price  
-- `RET` — daily return  
-- `vwretd` — value-weighted market return  
-**Missing values:** 1,244,931  
-
-🧠 *Used in:* time-series alignment, excess return computation, and portfolio weighting.
-
----
-
-### 6️⃣ `tickers.xlsx`
-**Purpose:** Master list of valid tickers in the sample universe.  
-**Frequency:** Static  
-**Shape:** 3,521 rows × 1 column  
-**Column:** `Tickers`  
-**Missing values:** 1  
-
-🧠 *Used in:* filtering and cross-checking tickers across datasets.
-
----
-
-## ⚙️ Utility Script — `preview_data.py`
-A small inspection utility that automatically scans the `Data/` folder and prints a compact summary of every dataset (shape, columns, missing values, and sample).
-
-
-
+### ✅ Version Information
+- Script version: v1.0 (Final)
+- Date generated: November 2025
+- Language: Python 3.11
+- Dependencies: pandas, json, pathlib
