@@ -1,0 +1,91 @@
+"""
+--------------------------------------------
+Automatic data inspection tool for Thesis Project
+Scans all datasets in the current directory and prints
+a compact summary: shape, columns, missing values, and sample.
+--------------------------------------------
+Author: Maria Simões
+Date: 2025-11
+"""
+
+import pandas as pd
+from pathlib import Path
+import json
+
+# Define the data folder (current directory)
+DATA_PATH = Path(__file__).parent
+
+
+def summarize_file(file_path):
+    """
+    Reads a single data file and prints a compact summary:
+    - shape (rows × columns)
+    - first columns
+    - missing value count
+    - first few rows
+    """
+    print(f"\n📄 {file_path.name}")
+    try:
+        # Select the correct loading method based on file extension
+        if file_path.suffix.lower() in [".csv", ".txt"]:
+            df = pd.read_csv(file_path)
+        elif file_path.suffix.lower() in [".xlsx", ".xls"]:
+            df = pd.read_excel(file_path)
+        elif file_path.suffix.lower() == ".json":
+            # Handle JSON separately
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            print(f"✅ JSON file loaded successfully – {len(data)} entries (dict/list)")
+            # Print a small preview (first 3 keys or items)
+            if isinstance(data, dict):
+                preview = dict(list(data.items())[:3])
+                print(json.dumps(preview, indent=2))
+            else:
+                print(data[:3])
+            return
+        else:
+            print("⚠️ Unsupported file type. Skipped.")
+            return
+
+        # --- Print key information ---
+        print(f"✅ Shape: {df.shape[0]} rows × {df.shape[1]} columns")
+
+        # Show first up to 8 columns
+        cols_preview = ", ".join(df.columns[:8]) + (" ..." if len(df.columns) > 8 else "")
+        print(f"🔑 Columns: {cols_preview}")
+
+        # Count total missing values
+        print(f"🕳 Missing values: {df.isna().sum().sum()}")
+
+        # Show a 3-row sample
+        print("🔍 Preview:")
+        print(df.head(3).to_string(index=False))
+
+    except Exception as e:
+        print(f"❌ Error reading {file_path.name}: {e}")
+
+
+def main():
+    """
+    Main function: iterates over all files in the folder and runs summarize_file().
+    Ignores README.md and the script itself.
+    """
+    print("🚀 Thesis Project — Data Preview Tool")
+    print("📂 Directory:", DATA_PATH)
+    print("-" * 60)
+
+    files_found = False
+
+    # Loop through all files in the directory
+    for file in sorted(DATA_PATH.iterdir()):
+        if file.is_file() and file.name not in ["README.md", "preview_data.py"]:
+            summarize_file(file)
+            files_found = True
+
+    # If no files are found
+    if not files_found:
+        print("⚠️ No data files found in this directory.")
+
+
+if __name__ == "__main__":
+    main()
