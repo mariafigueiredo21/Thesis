@@ -1,0 +1,147 @@
+"""
+------------------------------------------------------------------------------
+THESIS REBUILD – AUTOMATIC PYTHON REPORT BUILDER
+Author: Maria Cevadinha Simões Figueiredo
+Master’s in Finance – Nova School of Business and Economics
+Supervisor: Prof. Nicholas Hirschey
+Date: November 2025
+------------------------------------------------------------------------------
+
+Purpose:
+Scans the Thesis folder for all Python scripts (thesis_*.py or annexes),
+extracts analytical insights enclosed between markers
+# === ANALYSIS START === and # === ANALYSIS END ===,
+and compiles them into a unified, chronologically ordered report.
+
+Scientific Context:
+This automated consolidation allows for a reproducible synthesis of all
+empirical modules of the Thesis Rebuild project. Each section of the final
+report corresponds to an individual research stage — from data construction
+and factor modeling to regime and correlation analyses — ensuring complete
+transparency and replicability of results.
+
+------------------------------------------------------------------------------
+"""
+
+###################################### 0. INITIAL SETUP ######################################
+
+import os
+import re
+from pathlib import Path
+
+# === Define root folder ===
+root = Path(r"C:\Users\mcfigueiredo\OneDrive - SONAE\Desktop\Thesis")
+output_dir = root / "output"
+output_dir.mkdir(exist_ok=True)
+
+report_path = output_dir / "thesis_full_report.txt"
+
+###################################### 1. COLLECT PYTHON FILES ######################################
+
+# Select all relevant Python scripts, excluding builder or report files
+scripts = sorted(
+    [f for f in root.glob("*.py") if not f.name.lower().endswith(("builder.py", "report.py"))]
+)
+
+###################################### 2. FUNCTION: EXTRACT ANALYTICAL SECTIONS ######################################
+
+def extract_analysis(script_path):
+    """
+    Extracts all analytical commentary blocks from a script.
+    Captures text between '# === ANALYSIS START ===' and '# === ANALYSIS END ===' markers.
+    """
+    with open(script_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Identify all analysis sections
+    pattern = r"# === ANALYSIS START ===(.*?)# === ANALYSIS END ==="
+    matches = re.findall(pattern, content, flags=re.S)
+
+    if not matches:
+        return "⚠️ No analytical section found in this file."
+
+    # Clean and format extracted text
+    cleaned_blocks = []
+    for match in matches:
+        text = match.strip()
+        text = re.sub(r'^[\'"]{3}|[\'"]{3}$', '', text, flags=re.M).strip()
+        cleaned_blocks.append(text)
+
+    return "\n\n".join(cleaned_blocks)
+
+###################################### 3. BUILD REPORT ######################################
+
+sections = []
+
+sections.append("""
+------------------------------------------------------------------------------
+THESIS EMPIRICAL REBUILD – CONSOLIDATED REPORT
+------------------------------------------------------------------------------
+Author: Maria Cevadinha Simões Figueiredo
+Master’s in Finance – Nova School of Business and Economics
+Supervisor: Prof. Nicholas Hirschey
+Date: November 2025
+------------------------------------------------------------------------------
+Purpose:
+This document compiles all analytical interpretations and empirical conclusions
+automatically extracted from each Python module (Parts 1–5 and Annexes A–B)
+executed in the Thesis Rebuild project.
+
+Each section corresponds to a distinct empirical stage — from data preparation
+and portfolio construction to multi-factor regressions, volatility adjustments,
+and regime/correlation analyses.
+
+This ensures full traceability, transparency, and academic rigor in the
+documentation of results.
+------------------------------------------------------------------------------
+""")
+
+###################################### 4. ITERATE THROUGH FILES ######################################
+
+for i, script in enumerate(scripts, 1):
+    title = f"{script.stem.replace('_', ' ').title()}"
+    sections.append(f"\n\n🧩 {title}\n{'-'*80}")
+    sections.append(f"📄 Source: {script.name}\n")
+    sections.append(extract_analysis(script))
+
+###################################### 5. FINAL SYNTHESIS ######################################
+
+sections.append("""
+------------------------------------------------------------------------------
+🎓 FINAL SYNTHESIS – Comprehensive Empirical Reflection
+------------------------------------------------------------------------------
+The consolidated empirical evidence confirms that the Sales Growth × Liquidity
+framework yields **consistent, risk-efficient, and economically rational**
+performance across all temporal, cross-sectional, and regime dimensions.
+
+    • **1️⃣ Key Findings:**  
+        Portfolios behave **defensively during crises** and recover faster post-shocks.  
+        The **Long–Short factor** remains stable and orthogonal to standard Fama–French risks (Market, Size, Value).  
+        Observed **alphas vanish** once volatility and regime effects are normalized. 
+        Performance persistence reflects structural *quality exposure*, not mispricing.
+
+    • **2️⃣ Economic Interpretation:**  
+        These findings reveal that the proposed strategy captures a **quality-driven, anti-cyclical dimension of returns**.  
+        Its behaviour aligns with the literature on “Quality Minus Junk” (Frazzini & Pedersen, 2014) — strong fundamentals explain stability and resilience, not persistent excess returns.  
+        The framework is thus statistically robust and economically neutral, supporting the semi-strong form of market efficiency.
+
+    • **3️⃣ Integrated Reflection:** 
+        Across all empirical layers — data construction, portfolio formation, multi-factor modeling, volatility targeting, and regime decomposition — the evidence remains convergent:   no persistent alpha, yet strong consistency and robustness across conditions.  
+        This indicates that the market efficiently prices fundamental information, leaving little room for systematic exploitation.
+
+🎯 Empirical Verdict
+"Strong fundamentals explain strong firms — not necessarily excess returns."
+
+The Sales Growth × Liquidity factor behaves as a **defensive, orthogonal,
+and quality-consistent signal**, fully integrated within modern asset pricing
+frameworks.
+
+📘 End of Thesis Rebuild Report – All analytical modules successfully compiled.
+""")
+
+###################################### 6. WRITE FINAL REPORT ######################################
+
+with open(report_path, "w", encoding="utf-8") as f:
+    f.write("\n\n".join(sections))
+
+print(f"✅ Full analytical report successfully generated → {report_path}")
