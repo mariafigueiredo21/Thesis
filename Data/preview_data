@@ -1,91 +1,152 @@
 """
---------------------------------------------
-Automatic data inspection tool for Thesis Project
-Scans all datasets in the current directory and prints
-a compact summary: shape, columns, missing values, and sample.
---------------------------------------------
-Author: Maria Simões
-Date: 2025-11
+------------------------------------------------------------------------------
+Thesis Project – Part 1: Data Preparation and Financial Signal Construction
+Author: Maria Figueiredo
+Master’s in Finance – Nova School of Business and Economics
+Supervisor: Prof. Nicholas Hirschey
+Date: November 2025
+------------------------------------------------------------------------------
+
+🎓 Thesis Project — Data Preview & Interpretation Tool
+
+Automatic inspection tool for Thesis Project datasets.
+Scans all files in the current directory and prints a
+compact summary and academic interpretation for each dataset.
+------------------------------------------------------------
+
 """
 
 import pandas as pd
 from pathlib import Path
 import json
 
-# Define the data folder (current directory)
+###################################### 0. INITIAL SETUP ######################################
+
 DATA_PATH = Path(__file__).parent
 
+###################################### 1. INTERPRETATION DICTIONARY ######################################
+
+DATA_INTERPRETATION = {
+    "fffactors_daily.xlsx": """
+This dataset contains the daily Fama–French factors (Market–RF, SMB, HML, and the risk-free rate RF)
+used as the benchmark model in the empirical analysis. It provides the foundation for risk adjustment
+and factor-based regressions, enabling the isolation of abnormal performance (alpha) in portfolio returns.
+""",
+
+    "financial_data_1.xlsx": """
+This large dataset contains firm-level financial information sourced from Compustat/CRSP. It includes
+key accounting variables such as assets, liabilities, sales, and earnings per share, covering thousands
+of global firms over multiple fiscal years. It serves as the raw input for constructing fundamental signals
+(Sales Growth and Liquidity ratios) later used in portfolio formation.
+""",
+
+    "fundamentals_cleaned.xlsx": """
+This cleaned and processed dataset represents the refined version of the raw financial data after filtering,
+variable calculation, and ranking. It includes computed ratios such as the Current Ratio and Sales Growth Rate,
+as well as combined signal ranks and tercile assignments. It forms the empirical basis for all portfolio
+construction and performance evaluation in the thesis.
+""",
+
+    "portfolio_results.xlsx": """
+This dataset summarizes the key performance indicators (average annualized return, volatility, and Sharpe ratio)
+for the Long-Top, Long-Bottom, and Long-Short portfolios. It provides a concise overview of risk-adjusted efficiency
+and supports the evaluation of profitability and stability across the constructed strategies.
+""",
+
+    "stocks_returns.csv": """
+This file contains the full panel of daily stock returns with identifiers (PERMNO, ticker, price, and return),
+forming the core time-series dataset used to compute portfolio returns and test cross-sectional predictability.
+It represents the empirical backbone of the entire quantitative framework.
+""",
+
+    "tickers.xlsx": """
+This dataset lists all tickers (firm identifiers) included in the sample universe. It acts as a mapping reference
+to ensure consistency between financial data, returns data, and the constructed portfolios.
+"""
+}
+
+###################################### 2. CORE FUNCTION ######################################
 
 def summarize_file(file_path):
     """
     Reads a single data file and prints a compact summary:
     - shape (rows × columns)
-    - first columns
-    - missing value count
+    - columns
+    - missing values
     - first few rows
+    Followed by an academic interpretation of the dataset.
     """
     print(f"\n📄 {file_path.name}")
     try:
-        # Select the correct loading method based on file extension
+        # Load file based on extension
         if file_path.suffix.lower() in [".csv", ".txt"]:
             df = pd.read_csv(file_path)
         elif file_path.suffix.lower() in [".xlsx", ".xls"]:
             df = pd.read_excel(file_path)
         elif file_path.suffix.lower() == ".json":
-            # Handle JSON separately
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             print(f"✅ JSON file loaded successfully – {len(data)} entries (dict/list)")
-            # Print a small preview (first 3 keys or items)
             if isinstance(data, dict):
                 preview = dict(list(data.items())[:3])
                 print(json.dumps(preview, indent=2))
             else:
                 print(data[:3])
+            print("------------------------------------------------------------")
+            print("📊 Interpretation:")
+            if file_path.name in DATA_INTERPRETATION:
+                print(DATA_INTERPRETATION[file_path.name].strip())
+            else:
+                print("No specific interpretation for this dataset.")
             return
         else:
             print("⚠️ Unsupported file type. Skipped.")
             return
 
-        # --- Print key information ---
+        # --- Basic info ---
         print(f"✅ Shape: {df.shape[0]} rows × {df.shape[1]} columns")
-
-        # Show first up to 8 columns
         cols_preview = ", ".join(df.columns[:8]) + (" ..." if len(df.columns) > 8 else "")
         print(f"🔑 Columns: {cols_preview}")
-
-        # Count total missing values
         print(f"🕳 Missing values: {df.isna().sum().sum()}")
-
-        # Show a 3-row sample
         print("🔍 Preview:")
         print(df.head(3).to_string(index=False))
+
+        # --- Interpretation ---
+        print("------------------------------------------------------------")
+        print("📊 Interpretation:")
+        if file_path.name in DATA_INTERPRETATION:
+            print(DATA_INTERPRETATION[file_path.name].strip())
+        else:
+            print("No specific interpretation for this dataset.")
 
     except Exception as e:
         print(f"❌ Error reading {file_path.name}: {e}")
 
+###################################### 3. MAIN FUNCTION ######################################
 
 def main():
     """
-    Main function: iterates over all files in the folder and runs summarize_file().
-    Ignores README.md and the script itself.
+    Iterates over all files in the data folder and summarizes them.
     """
-    print("🚀 Thesis Project — Data Preview Tool")
+    print("------------------------------------------------------------")
+    print("🎓 Thesis Project — Data Preview & Interpretation Tool")
     print("📂 Directory:", DATA_PATH)
-    print("-" * 60)
+    print("------------------------------------------------------------")
 
     files_found = False
 
-    # Loop through all files in the directory
     for file in sorted(DATA_PATH.iterdir()):
         if file.is_file() and file.name not in ["README.md", "preview_data.py"]:
             summarize_file(file)
             files_found = True
+            print("------------------------------------------------------------")
 
-    # If no files are found
     if not files_found:
         print("⚠️ No data files found in this directory.")
 
+    print("✅ Data inspection and interpretation complete.")
+
+###################################### 4. EXECUTION ######################################
 
 if __name__ == "__main__":
     main()
